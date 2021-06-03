@@ -5,6 +5,7 @@
         #:alexandria
         #:clack
         #:websocket-driver
-        #:yason
-        #:trivia)
+        #:cl-json
+        #:trivia
+        #:flexi-streams)
   (:export #:main))

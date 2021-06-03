@@ -10,6 +10,7 @@
                "trivia"
                "websocket-driver"
                "clack"
-               "yason")
+               "cl-json"
+               "flexi-streams")
   :components ((:file "package")
                (:file "zender-sockets")))
