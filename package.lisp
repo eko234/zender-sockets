@@ -6,6 +6,7 @@
         #:clack
         #:websocket-driver
         #:cl-json
+        ; #:dexador
         #:trivia
         #:flexi-streams)
   (:export #:main))
