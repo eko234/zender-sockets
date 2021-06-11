@@ -2,8 +2,11 @@
 
 (in-package #:zender-sockets)
 
+;;;CONNECTION DATABASE
 (defvar *connections* (make-hash-table :test 'equal))
 
+
+;;;UTILS
 (defun get-auth-data (data)
   (format T "~a ~%"(with-input-from-string
                        (s (dexador:post "http://localhost:8087/validate"
@@ -11,11 +14,42 @@
                                         :content (cl-json:encode-json-to-string `(("secret" . ,data)))))
                      (json:decode-json s))))
 
+
+(defmacro with-generic-error-handler (exp)
+  `(handler-case 
+       ,exp
+     (t (c) 
+       (format T "~a ~%" c)
+       (cl-json:encode-json-to-string `(("RESULT" . "ERR")
+                                        ("STATUS" . "FUCKUP"))))))
+
+
+(defun body-to-string (stream)
+  (if (listen stream)
+      (alexandria:read-stream-content-into-string stream)
+      ""))
+
+
+(defun decode-json-from-string-wrapped (string)
+  (ignore-errors
+    (json:decode-json-from-string string)))
+
+;;;CLIENT
 (defclass client ()
   ((connection :initarg :connection
                :accessor connection)
    (mailbox :initform (list)
             :accessor mailbox)))
+
+(defgeneric push-to-mailbox (obj message)
+  (:documentation "puts message atop of message mailbox")
+  (:method (obj message)
+    (declare (ignorable obj))
+    (format t "data was lost: ~a ~%" message)))
+
+(defmethod push-to-mailbox ((obj client) msg)
+  (setf (mailbox obj) (cons msg (mailbox obj))))
+
 
 (defun find-client-by-conn (conn)
   (trivia:match 
@@ -27,21 +61,13 @@
 
 (defun find-id-by-conn (conn)
   (trivia:match 
-   (loop for id being each hash-key in *connections*
+   (loop for id     being each hash-key   in *connections*
          for client being each hash-value in *connections*
          when (equal conn (connection client))
          collect id)
    ((list id) id)
    (_ NIL)))
 
-(defgeneric push-to-mailbox (obj message)
-  (:documentation "puts message atop of message mailbox")
-  (:method (obj message)
-    (declare (ignorable obj))
-    (format t "data was lost: ~a ~%" message)))
-
-(defmethod push-to-mailbox ((obj client) msg)
-  (setf (mailbox obj) (cons msg (mailbox obj))))
 
 (defun handle-new-connection (con)
   (let ((auth-data (get-auth-data (gethash "key" (websocket-driver.ws.server::headers con)))))
@@ -54,17 +80,16 @@
                                                con))))
                   (_ NIL))))
 
-(defvar *test-con-list* (make-hash-table :test 'equal))
-
-(defun handle-test-connection (con)
-  (trivia:match 
-   (gethash "id" (websocket-driver.ws.server::headers con))
-              (id
-               (trivia:match (gethash id *connections*)
-                             (NIL (setf (gethash id *connections*) 
-                                            (make-instance 'client :connection con)))
-                             (client (setf (connection client)
-                                                       con))))))
+;; for debuging and testing purposes
+; (defun handle-test-connection (con)
+;   (trivia:match 
+;    (gethash "id" (websocket-driver.ws.server::headers con))
+;    (id
+;     (trivia:match (gethash id *connections*)
+;                   (NIL (setf (gethash id *connections*) 
+;                              (make-instance 'client :connection con)))
+;                   (client (setf (connection client)
+;                                 con))))))
 
 (defun read-one-from-conn (id dumping)
   (let* ((client (gethash id *connections*))
@@ -72,8 +97,7 @@
          (message (car mailbox)))
     (when dumping (setf (mailbox client) (cdr mailbox)))
     (cl-json:encode-json-to-string `(("RESULT" . "OK")
-                                     ("DATA"   . ,(list message))))))
-
+                                     ("DATA"   . ,message)))))
 
 (defun read-all-from-conn (id dumping)
   (let* ((client (gethash id *connections*))
@@ -81,62 +105,79 @@
     (when dumping (setf (mailbox client) (list)))
     (cl-json:encode-json-to-string `(("RESULT" . "OK")
                                      ("DATA"   . ,mailbox)))))
+
+
+(defun get-status (id)
+  (let* ((client (gethash id *connections*)))
+    (cl-json:encode-json-to-string `(("RESULT" . "OK")
+                                     ("STATUS" . ,(ready-state (connection client)))))))
+
+
 (defun write-to-conn (id data)
-  (let ((client (gethash id *connections*))
-        (connection (connection client)))
-    (websocket-driver:send connection data)
-    (cl-json:encode-json-to-string '(("RESULT" . "OK")))))
+  (let* ((client (gethash id *connections*))
+         (connection (connection client)))
+    (trivia:match (ready-state connection)
+                  (:open
+                   (websocket-driver:send connection data)
+                   (cl-json:encode-json-to-string `(("RESULT" . "OK")))))))
 
 (defun handle-close-connection (connection)
-  (let ((message (format nil " .... ~a has left."
-                         (gethash connection *connections*))))
-    (remhash (find-client-by-conn connection) *connections*)))
+  (setf (connection (find-client-by-conn connection)) NIL))
 
+
+;;;WS SERVER
 (defun run-ws-server (env)
   (let ((ws (websocket-driver:make-server env)))
     (websocket-driver:on :open ws
                          ; (lambda () (handle-new-connection ws))
-                           (lambda () (handle-test-connection ws))
-                         )
+                         (lambda () 
+                           (format T "~a FIRED OPEN ~%" ws)
+                           (handle-test-connection ws)))
     (websocket-driver:on :message ws
                          (lambda (msg) 
+                           (format T "~a FIRED MESSAGE ~%" ws)
                            (push-to-mailbox (find-client-by-conn ws) msg)
                            (format T "mailbox content:  ~a ~%" (mailbox (find-client-by-conn ws)))))
+    (websocket-driver:on :error ws
+                         (lambda (reason)
+                           (format T "~a FIRED ERROR ~%" ws)
+                           (format T "this nigga eating beans ~a ~%" reason)))
     (websocket-driver:on :close ws
                          (lambda (&key code reason)
                            (declare (ignore code reason))
+                           (format T "~a FIRED CLOSE ~%" ws)
                            (handle-close-connection ws)))
     (lambda (responder)
       (declare (ignore responder))
       (websocket-driver:start-connection ws))))
 
-;; handles internal requests to communicate with the sockets server
-(defun body-to-string (stream)
-  (if (listen stream)
-      (alexandria:read-stream-content-into-string stream)
-      ""))
 
-(defun decode-json-from-string-wrapped (string)
-  (ignore-errors
-    (json:decode-json-from-string string)))
-
+;;;HTTP SERVER
 (defun run-http-server (env)
   (trivia:match env
                 ((plist :request-method request-method
                         :raw-body       raw-body)
                  (let ((data (decode-json-from-string-wrapped (body-to-string raw-body))))
                    (trivia:match data
+                                 ((alist (:cmd . "STATUS")
+                                         (:id . id))
+                                  `(200 (:content-type "application/json") (,(with-generic-error-handler 
+                                                                                 (get-status id)))))
                                  ((alist (:cmd . "READ")
                                          (:id . id))
-                                  `(200 (:content-type "application/json") (,(read-one-from-conn id NIL))))
+                                  `(200 (:content-type "application/json") (,(with-generic-error-handler 
+                                                                                 (read-one-from-conn id T)))))
                                  ((alist (:cmd . "READ-ALL")
                                          (:id . id))
-                                  `(200 (:content-type "application/json") (,(read-all-from-conn id T))))
+                                  `(200 (:content-type "application/json") (,(with-generic-error-handler 
+                                                                                 (read-all-from-conn id T)))))
                                  ((alist (:cmd . "WRITE")
                                          (:id . id)
                                          (:data . data))
-                                  `(200 (:content-type "application/json") (,(write-to-conn id data))))
-                                 (_ '(200 (:content-type "application/json") ("invalid request kiddo"))))))
+                                  `(200 (:content-type "application/json") (,(with-generic-error-handler
+                                                                               (write-to-conn id data)))))
+                                 (_ 
+                                  `(500 (:content-type "application/json") ("invalid request kiddo"))))))
                 (_ '(200 (:content-type "application/json") ("fuko")))))
 
 (defun main ()
