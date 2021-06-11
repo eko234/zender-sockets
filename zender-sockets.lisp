@@ -47,15 +47,38 @@
 (defun handle-new-connection (con)
   (let ((auth-data (get-auth-data (gethash 'key (websocket-driver.ws.server::headers con)))))
     (trivia:match auth-data
-                  ((alist 
-                    (:id    . id)
-                    (:valid .  T))
+                  (id
                    (trivia:match (gethash id *connections*)
+  ; THE HEADER IS A
                                  (NIL (setf (gethash id *connections*) 
                                             (make-instance 'client :connection con)))
                                  (client (setf (connection client)
                                                con))))
                   (_ NIL))))
+
+(defvar *test-con-list* (make-hash-table :test 'equal))
+
+(defun handle-test-connection (con)
+  (format T "FIRE ~%")
+  (format T "HEADERS ~a ~%" (websocket-driver.ws.server::headers con))
+  ; (format T "HEADERS ~a ~%" (loop for v being each hash-value of (gethash 'id (websocket-driver.ws.server::headers con))
+  ;                                 collect v))
+
+  (format T "HEADERS ~a ~%" (loop for v being each hash-value of (websocket-driver.ws.server::headers con)
+                                  collect v))  
+
+ (format T "HEADERS ~a ~%" (loop for v being each hash-key of (websocket-driver.ws.server::headers con)
+                                  collect (type-of v)))
+
+  (trivia:match 
+   (gethash 'id (websocket-driver.ws.server::headers con))
+              (id
+               (trivia:match (gethash id *connections*)
+                             (NIL (setf (gethash id *connections*) 
+                                            (make-instance 'client :connection con)))
+                             (client (setf (connection client)
+                                                       con))))))
+
 
 (defun read-from-conn (id dumping)
   (let* ((client (gethash id *connections*))
@@ -77,9 +100,13 @@
 (defun run-ws-server (env)
   (let ((ws (websocket-driver:make-server env)))
     (websocket-driver:on :open ws
-                         (lambda () (handle-new-connection ws)))
+                         ; (lambda () (handle-new-connection ws))
+                           (lambda () (handle-test-connection ws))
+                         )
     (websocket-driver:on :message ws
-                         (lambda (msg) (push-to-mailbox (find-client-by-conn ws) msg)))
+                         (lambda (msg) 
+                           (push-to-mailbox (find-client-by-conn ws) msg)
+                           (format T "mailbox content:  ~a ~%" (mailbox (find-client-by-conn ws)))))
     (websocket-driver:on :close ws
                          (lambda (&key code reason)
                            (declare (ignore code reason))
