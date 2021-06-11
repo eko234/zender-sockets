@@ -3,15 +3,13 @@
 (in-package #:zender-sockets)
 
 (defvar *connections* (make-hash-table :test 'equal))
-;; QUERY AGAINST Zender-backend sending a 
-;; json containing the key header
 
 (defun get-auth-data (data)
   (format T "~a ~%"(with-input-from-string
-    (s (dexador:post "http://localhost:8087/validate"
-        :headers '(("content-type" . "application/json"))
-        :content (cl-json:encode-json-to-string `(("secret" . ,data)))))
-    (json:decode-json s))))
+                       (s (dexador:post "http://localhost:8087/validate"
+                                        :headers '(("content-type" . "application/json"))
+                                        :content (cl-json:encode-json-to-string `(("secret" . ,data)))))
+                     (json:decode-json s))))
 
 (defclass client ()
   ((connection :initarg :connection
@@ -19,19 +17,28 @@
    (mailbox :initform (list)
             :accessor mailbox)))
 
-(defun find-by-conn (conn)
+(defun find-client-by-conn (conn)
   (trivia:match 
-    (loop for client being each hash-value in *connections*
-          when (equal conn (connection client))
-          collect client)
+   (loop for client being each hash-value in *connections*
+         when (equal conn (connection client))
+         collect client)
    ((list client) client)
+   (_ NIL)))
+
+(defun find-id-by-conn (conn)
+  (trivia:match 
+   (loop for id being each hash-key in *connections*
+         for client being each hash-value in *connections*
+         when (equal conn (connection client))
+         collect id)
+   ((list id) id)
    (_ NIL)))
 
 (defgeneric push-to-mailbox (obj message)
   (:documentation "puts message atop of message mailbox")
   (:method (obj message)
-           (declare (ignorable obj))
-           (format t "data was lost: ~a ~%" message)))
+    (declare (ignorable obj))
+    (format t "data was lost: ~a ~%" message)))
 
 (defmethod push-to-mailbox ((obj client) msg)
   (let* ((mailbox (mailbox obj)))
@@ -47,7 +54,7 @@
                                  (NIL (setf (gethash id *connections*) 
                                             (make-instance 'client :connection con)))
                                  (client (setf (connection client)
-                                                con))))
+                                               con))))
                   (_ NIL))))
 
 (defun read-from-conn (id dumping)
@@ -65,14 +72,14 @@
 (defun handle-close-connection (connection)
   (let ((message (format nil " .... ~a has left."
                          (gethash connection *connections*))))
-    (remhash (find-by-conn connection) *connections*)))
+    (remhash (find-client-by-conn connection) *connections*)))
 
 (defun run-ws-server (env)
   (let ((ws (websocket-driver:make-server env)))
     (websocket-driver:on :open ws
                          (lambda () (handle-new-connection ws)))
     (websocket-driver:on :message ws
-                         (lambda (msg) (push-to-mailbox (find-by-conn ws) msg)))
+                         (lambda (msg) (push-to-mailbox (find-client-by-conn ws) msg)))
     (websocket-driver:on :close ws
                          (lambda (&key code reason)
                            (declare (ignore code reason))
