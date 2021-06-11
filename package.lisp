@@ -6,7 +6,8 @@
         #:clack
         #:websocket-driver
         #:cl-json
-        ; #:dexador
+        #:dexador
         #:trivia
         #:flexi-streams)
+  (:shadowing-import-from :dexador :get :delete)
   (:export #:main))

@@ -7,46 +7,72 @@
 ;; json containing the key header
 
 (defun get-auth-data (data)
-  (getdataasjson 
-   (dexador:post data "http://localhost:8087/validate")))
+  (format T "~a ~%"(with-input-from-string
+    (s (dexador:post "http://localhost:8087/validate"
+        :headers '(("content-type" . "application/json"))
+        :content (cl-json:encode-json-to-string `(("secret" . ,data)))))
+    (json:decode-json s))))
+
+(defclass client ()
+  ((connection :initarg :connection
+               :accessor connection)
+   (mailbox :initform (list)
+            :accessor mailbox)))
+
+(defun find-by-conn (conn)
+  (trivia:match 
+    (loop for client being each hash-value in *connections*
+          when (equal conn (connection client))
+          collect client)
+   ((list client) client)
+   (_ NIL)))
+
+(defgeneric push-to-mailbox (obj message)
+  (:documentation "puts message atop of message mailbox")
+  (:method (obj message)
+           (declare (ignorable obj))
+           (format t "data was lost: ~a ~%" message)))
+
+(defmethod push-to-mailbox ((obj client) msg)
+  (let* ((mailbox (mailbox obj)))
+    (setf mailbox (cons msg mailbox))))
 
 (defun handle-new-connection (con)
-  (format t "FIRE ~%")
-  (let ((auth-data (get-auth-data (getheader 'key con))))
+  (let ((auth-data (get-auth-data (gethash 'key (websocket-driver.ws.server::headers con)))))
     (trivia:match auth-data
                   ((alist 
-                    (:id id
-                     :valid T))
-                   (setf (gethash id *connections*)
-                         con))
-                  (_ (progn 
-                      (void))))))
+                    (:id    . id)
+                    (:valid .  T))
+                   (trivia:match (gethash id *connections*)
+                                 (NIL (setf (gethash id *connections*) 
+                                            (make-instance 'client :connection con)))
+                                 (client (setf (connection client)
+                                                con))))
+                  (_ NIL))))
 
-
-(defun read-from-conn (id &keys)
-  1)
+(defun read-from-conn (id dumping)
+  (let* ((client (gethash id *connections*))
+         (mailbox (mailbox client))
+         (message (car mailbox)))
+    (when destroying (setf (mailbox client) (cdr mailbox)))
+    (list message)))
 
 (defun write-to-conn (id data)
-  2)
-
-(defun broadcast-to-client (connection message)
-  (let ((message (format nil "~a: ~a"
-                         (gethash connection *connections*)
-                         message)))
-    (loop :for con :being :the :hash-key :of *connections* :do
-             (websocket-driver:send con message))))
+  (let ((client (gethash id *connections*))
+        (connection (connection client)))
+    (websocket-driver:send connection data)))
 
 (defun handle-close-connection (connection)
   (let ((message (format nil " .... ~a has left."
                          (gethash connection *connections*))))
-    (remhash connection *connections*)))
+    (remhash (find-by-conn connection) *connections*)))
 
 (defun run-ws-server (env)
   (let ((ws (websocket-driver:make-server env)))
     (websocket-driver:on :open ws
                          (lambda () (handle-new-connection ws)))
     (websocket-driver:on :message ws
-                         (lambda (msg) (broadcast-to-client ws msg)))
+                         (lambda (msg) (push-to-mailbox (find-by-conn ws) msg)))
     (websocket-driver:on :close ws
                          (lambda (&key code reason)
                            (declare (ignore code reason))
@@ -73,10 +99,10 @@
                    (trivia:match data
                                  ((alist (:cmd . "READ")
                                          (:id . id))
-                                  `(200 (:content-type "application/json") ((read-from-conn id :single))))
+                                  `(200 (:content-type "application/json") ((read-from-conn id NIL))))
                                  ((alist (:cmd . "READ-ALL")
                                          (:id . id))
-                                  `(200 (:content-type "application/json") ((read-from-conn id :all))))
+                                  `(200 (:content-type "application/json") ((read-from-conn id NIL))))
                                  ((alist (:cmd . "WRITE")
                                          (:id . id)
                                          (:data . data))

@@ -9,6 +9,7 @@
   :depends-on ("alexandria"
                "trivia"
                "websocket-driver"
+               "dexador"
                "clack"
                "cl-json"
                "flexi-streams")

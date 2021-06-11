@@ -1,0 +1,18 @@
+(defclass pastel ()
+  ((sabor :initarg :sabor
+          :accessor sabor)))
+
+(defvar *postres* (make-hash-table :test 'equal))
+
+(defvar *pastelillo* (make-instance 'pastel :sabor "delicioso"))
+
+(setf (gethash 1 *postres*)
+      *pastelillo*)
+
+(defvar *res* (loop for pastelete being each hash-value in *postres*
+      when (equal *pastelillo* pastelete)
+      collect pastelete))
+
+(format T "~a" *res*)
+
+(format T "determinar si las connexiones de web sockets son equiparables, debe haber algo identico almenos en la estructura, eso es suficiente ~%")
