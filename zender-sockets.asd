@@ -14,4 +14,7 @@
                "cl-json"
                "flexi-streams")
   :components ((:file "package")
-               (:file "zender-sockets")))
+               (:file "zender-sockets"))
+  :build-operation "program-op"
+  :build-pathname "zensoc"
+  :entry-point "zender-sockets:main")

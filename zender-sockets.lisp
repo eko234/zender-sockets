@@ -180,6 +180,25 @@
                                   `(500 (:content-type "application/json") ("invalid request kiddo"))))))
                 (_ '(200 (:content-type "application/json") ("fuko")))))
 
+
 (defun main ()
   (defvar *ws-handler*   (clack:clackup #'run-ws-server   :port 8086))
-  (defvar *http-handler* (clack:clackup #'run-http-server :port 8073)))
+  (defvar *http-handler* (clack:clackup #'run-http-server :port 8073))
+  ;; let the webserver run.
+  ;; warning: hardcoded "hunchentoot".
+  (handler-case (bt:join-thread (find-if (lambda (th)
+                                            (search "hunchentoot" (bt:thread-name th)))
+                                         (bt:all-threads)))
+    ;; Catch a user's C-c
+    (#+sbcl sb-sys:interactive-interrupt
+      #+ccl  ccl:interrupt-signal-condition
+      #+clisp system::simple-interrupt-condition
+      #+ecl ext:interactive-interrupt
+      #+allegro excl:interrupt-signal
+      () (progn
+           (format *error-output* "Aborting.~&")
+           (clack:stop *server*)
+           (uiop:quit)))
+    (error (c) (format t "Woops, an unknown error occured:~&~a~&" c))))
+
+
