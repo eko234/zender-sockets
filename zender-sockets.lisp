@@ -172,6 +172,7 @@
                         :raw-body       raw-body)
                  (let ((data (decode-json-from-string-wrapped (body-to-string raw-body))))
                  (format T "the data is: ~a with type ~a ~%" data (type-of data))
+                      (format T "the body is: ~a ~%" (body-to-string raw-body))
                    (trivia:match data
                                  ((alist (:cmd . "STATUS")
                                          (:id . id))
