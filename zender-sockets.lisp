@@ -83,13 +83,14 @@
                   ((alist (:result . "OK")
                           (:id . id)
                           (:valid . T))
+                   (format T "MATCHED ~%")
                    (trivia:match (gethash id *connections*)
                                  (NIL (setf (gethash id *connections*) 
                                             (make-instance 'client :connection con)))
                                  (client (setf (connection client)
                                                con)))
                   )
-                  (_  NIL))))
+                  (_ (format T "DIDNT MATCHED ~%") NIL))))
 
 ;; for debuging and testing purposes
 ; (defun handle-test-connection (con)
