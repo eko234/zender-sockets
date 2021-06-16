@@ -8,11 +8,11 @@
 
 ;;;UTILS
 (defun get-auth-data (data)
-  (format T "~a ~%"(with-input-from-string
+  (with-input-from-string
                        (s (dexador:post "http://localhost:8087/validate"
                                         :headers '(("content-type" . "application/json"))
                                         :content (cl-json:encode-json-to-string `(("secret" . ,data)))))
-                     (json:decode-json s))))
+                     (json:decode-json s)))
 
 
 (defmacro with-generic-error-handler (exp)
