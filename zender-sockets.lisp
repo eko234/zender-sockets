@@ -71,18 +71,17 @@
 
 (defun handle-new-connection (con)
   (let ((auth-data (get-auth-data (gethash "key" (websocket-driver.ws.server::headers con)))))
-       (format T "auth-data: ~a ~%" auth-data)
+    (format T "auth-data: ~a ~%" auth-data)
     (trivia:match auth-data
                   ((alist (:result . "OK")
                           (:id . id)
                           (:valid . T))
-                   (format T "IT PASSES THOUGH ~%")
                    (trivia:match (gethash id *connections*)
                                  (NIL (setf (gethash id *connections*) 
                                             (make-instance 'client :connection con)))
                                  (client (setf (connection client)
                                                con)))
-                  (_  (format T "fukie ~%") NIL)))))
+                  (_  NIL)))))
 
 ;; for debuging and testing purposes
 ; (defun handle-test-connection (con)
