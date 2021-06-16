@@ -13,7 +13,7 @@
   (format T "bytes: ~a ~%" (flexi-streams:string-to-octets data))
   (format T "bytes: ~a ~%" (flexi-streams:string-to-octets (format NIL "~s" data)))
   (format T "bytes: ~a ~%" (flexi-streams:string-to-octets (format NIL "~a" data)))
-  
+  (format T "json: ~a ~%"  (cl-json:encode-json-to-string `(("secret" . ,data))))
   
   (with-input-from-string
                        (s (dexador:post "http://localhost:8087/validate"
