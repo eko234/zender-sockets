@@ -88,7 +88,8 @@
                                             (make-instance 'client :connection con)))
                                  (client (setf (connection client)
                                                con)))
-                  (_  NIL)))))
+                  )
+                  (_  NIL))))
 
 ;; for debuging and testing purposes
 ; (defun handle-test-connection (con)
