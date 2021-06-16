@@ -126,6 +126,7 @@
 
 
 (defun write-to-conn (id data)
+  (format T "we got here : ~a" data)
   (let* ((client (gethash id *connections*))
          (connection (connection client)))
     (trivia:match (ready-state connection)
