@@ -9,7 +9,12 @@
 ;;;UTILS
 (defun get-auth-data (data)
   (format T "data: ~a ~%" data)
+  (format T "data: ~s ~%" data)
   (format T "bytes: ~a ~%" (flexi-streams:string-to-octets data))
+  (format T "bytes: ~a ~%" (flexi-streams:string-to-octets (format NIL "~s" data)))
+  (format T "bytes: ~a ~%" (flexi-streams:string-to-octets (format NIL "~a" data)))
+  
+  
   (with-input-from-string
                        (s (dexador:post "http://localhost:8087/validate"
                                         :headers '(("content-type" . "application/json"))
