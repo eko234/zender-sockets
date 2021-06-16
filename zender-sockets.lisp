@@ -8,18 +8,11 @@
 
 ;;;UTILS
 (defun get-auth-data (data)
-  (format T "data: ~a ~%" data)
-  (format T "data: ~s ~%" data)
-  (format T "bytes: ~a ~%" (flexi-streams:string-to-octets data))
-  (format T "bytes: ~a ~%" (flexi-streams:string-to-octets (format NIL "~s" data)))
-  (format T "bytes: ~a ~%" (flexi-streams:string-to-octets (format NIL "~a" data)))
-  (format T "json: ~a ~%"  (cl-json:encode-json-to-string `(("secret" . ,data))))
-  
   (with-input-from-string
-                       (s (dexador:post "http://localhost:8087/validate"
-                                        :headers '(("content-type" . "application/json"))
-                                        :content (cl-json:encode-json-to-string `(("secret" . ,data)))))
-                     (json:decode-json s)))
+      (s (dexador:post "http://localhost:8087/validate"
+                       :headers '(("content-type" . "application/json"))
+                       :content (cl-json:encode-json-to-string `(("secret" . ,data)))))
+    (json:decode-json s)))
 
 
 (defmacro with-generic-error-handler (exp)
@@ -78,7 +71,6 @@
 
 (defun handle-new-connection (con)
   (let ((auth-data (get-auth-data (gethash "key" (websocket-driver.ws.server::headers con)))))
-    (format T "auth-data: ~a ~%" auth-data)
     (trivia:match auth-data
                   ((alist (:result . "OK")
                           (:id . id)
@@ -88,20 +80,8 @@
                                  (NIL (setf (gethash id *connections*) 
                                             (make-instance 'client :connection con)))
                                  (client (setf (connection client)
-                                               con)))
-                  )
+                                               con))))
                   (_ (format T "DIDNT MATCHED ~%") NIL))))
-
-;; for debuging and testing purposes
-; (defun handle-test-connection (con)
-;   (trivia:match 
-;    (gethash "id" (websocket-driver.ws.server::headers con))
-;    (id
-;     (trivia:match (gethash id *connections*)
-;                   (NIL (setf (gethash id *connections*) 
-;                              (make-instance 'client :connection con)))
-;                   (client (setf (connection client)
-;                                 con))))))
 
 (defun read-one-from-conn (id dumping)
   (let* ((client (gethash id *connections*))
@@ -126,7 +106,6 @@
 
 
 (defun write-to-conn (id data)
-  (format T "we got here : ~a" data)
   (let* ((client (gethash id *connections*))
          (connection (connection client)))
     (trivia:match (ready-state connection)
@@ -142,11 +121,7 @@
 (defun run-ws-server (env)
   (let ((ws (websocket-driver:make-server env)))
     (websocket-driver:on :open ws
-                          (lambda () (handle-new-connection ws))
-                         ;(lambda () 
-                         ;  (format T "~a FIRED OPEN ~%" ws)
-                         ;  (handle-test-connection ws))
-                         )
+                         (lambda () (handle-new-connection ws)))
     (websocket-driver:on :message ws
                          (lambda (msg) 
                            (format T "~a FIRED MESSAGE ~%" ws)
@@ -172,8 +147,6 @@
                 ((plist :request-method request-method
                         :raw-body       raw-body)
                  (let ((data (decode-json-from-string-wrapped (body-to-string raw-body))))
-                 (format T "the data is: ~a with type ~a ~%" data (type-of data))
-                      (format T "the body is: ~a ~%" (body-to-string raw-body))
                    (trivia:match data
                                  ((alist (:cmd . "STATUS")
                                          (:id . id))
@@ -191,7 +164,7 @@
                                          (:id . id)
                                          (:data . data))
                                   `(200 (:content-type "application/json") (,(with-generic-error-handler
-                                                                               (write-to-conn id data)))))
+                                                                                 (write-to-conn id data)))))
                                  (_ 
                                   `(500 (:content-type "application/json") ("invalid request kiddo"))))))
                 (_ '(200 (:content-type "application/json") ("fuko")))))
@@ -203,7 +176,7 @@
   ;; let the webserver run.
   ;; warning: hardcoded "hunchentoot".
   (handler-case (bt:join-thread (find-if (lambda (th)
-                                            (search "hunchentoot" (bt:thread-name th)))
+                                           (search "hunchentoot" (bt:thread-name th)))
                                          (bt:all-threads)))
     ;; Catch a user's C-c
     (#+sbcl sb-sys:interactive-interrupt
