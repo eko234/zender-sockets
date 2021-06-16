@@ -129,10 +129,11 @@
 (defun run-ws-server (env)
   (let ((ws (websocket-driver:make-server env)))
     (websocket-driver:on :open ws
-                         ; (lambda () (handle-new-connection ws))
-                         (lambda () 
-                           (format T "~a FIRED OPEN ~%" ws)
-                           (handle-test-connection ws)))
+                          (lambda () (handle-new-connection ws))
+                         ;(lambda () 
+                         ;  (format T "~a FIRED OPEN ~%" ws)
+                         ;  (handle-test-connection ws))
+                         )
     (websocket-driver:on :message ws
                          (lambda (msg) 
                            (format T "~a FIRED MESSAGE ~%" ws)
