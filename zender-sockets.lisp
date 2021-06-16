@@ -72,7 +72,8 @@
 (defun handle-new-connection (con)
   (let ((auth-data (get-auth-data (gethash "key" (websocket-driver.ws.server::headers con)))))
     (trivia:match auth-data
-                  (id
+                  ((alist (:id id)
+                          (:valid T) 
                    (trivia:match (gethash id *connections*)
                                  (NIL (setf (gethash id *connections*) 
                                             (make-instance 'client :connection con)))
