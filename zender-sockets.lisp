@@ -16,7 +16,9 @@
   (format T "json: ~a ~%"  (cl-json:encode-json-to-string `(("secret" . ,data))))
   (format T "json-out: ~a ~%"  
           
-          (json:decode-json (cl-json:encode-json-to-string `(("secret" . ,data)))))
+          (with-input-from-string
+            (s (cl-json:encode-json-to-string `(("secret" . ,data)) ) 
+               (json:decode-json s))))
   
   (with-input-from-string
                        (s (dexador:post "http://localhost:8087/validate"
