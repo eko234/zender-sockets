@@ -122,7 +122,7 @@
 (defun get-status (id)
   (let* ((client (gethash id *connections*)))
     (cl-json:encode-json-to-string `(("RESULT" . "OK")
-                                     ("STATUS" . ,(ready-state (connection client)))))))
+                                     ("STATUS" . ,(string (ready-state (connection client))))))))
 
 
 (defun write-to-conn (id data)
