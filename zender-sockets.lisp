@@ -131,7 +131,7 @@
          (connection (connection client)))
     (trivia:match (ready-state connection)
                   (:open
-                   (websocket-driver:send connection data)
+                   (websocket-driver:send connection  (cl-json:encode-json-to-string  data))
                    (cl-json:encode-json-to-string `(("RESULT" . "OK")))))))
 
 (defun handle-close-connection (connection)
