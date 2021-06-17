@@ -43,13 +43,15 @@
 
 (defgeneric push-to-mailbox (obj message)
   (:documentation "puts message atop of message mailbox")
+  (:method ((obj null) message)
+    (declare (ignorable obj))
+    (format t "null object, data was lost: ~a ~%" message))
   (:method (obj message)
     (declare (ignorable obj))
-    (format t "data was lost: ~a ~%" message)))
+    (format t "non-specific object, data was lost: ~a ~%" message)))
 
 (defmethod push-to-mailbox ((obj client) msg)
   (setf (mailbox obj) (cons msg (mailbox obj))))
-
 
 (defun find-client-by-conn (conn)
   (trivia:match 
