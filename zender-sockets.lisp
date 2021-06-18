@@ -138,9 +138,8 @@
       (declare (ignore responder))
       (websocket-driver:start-connection ws))))
 
-
 (defun invalid-req-handler ()
-  (format nil "Invalid request my boi"))
+  (format nil "Invalid request my kid"))
 
 ;;;HTTP SERVER
 (defun run-http-server (env)
@@ -176,9 +175,7 @@
   (defvar *http-handler* (clack:clackup #'run-http-server :port 8073))
   (format T "launching this motherfuker ~%")
   (force-output)
-  (uiop:format! t "swanking ma nigga")
+  (uiop:format! t "slynking ma nigga")
   (bt:make-thread (lambda ()
-                    (swank:create-server :port 4006)
-                    :name "swank")))
-
-
+                    (slynk:create-server :port 4006)
+                    :name "slynk")))

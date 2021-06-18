@@ -7,6 +7,7 @@
         #:websocket-driver
         #:cl-json
         #:dexador
+        #:slynk
         #:trivia
         #:flexi-streams)
   (:shadowing-import-from :dexador :get :delete)
