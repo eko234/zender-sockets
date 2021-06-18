@@ -1,5 +1,4 @@
 ;;;; zender-sockets.lisp
-
 (in-package #:zender-sockets)
 
 ;;;CONNECTION DATABASE
@@ -12,7 +11,6 @@
                        :headers '(("content-type" . "application/json"))
                        :content (cl-json:encode-json-to-string `(("secret" . ,data)))))
     (json:decode-json s)))
-
 
 (defmacro with-generic-error-handler (exp)
   `(handler-case 
@@ -67,7 +65,6 @@
    ((list id) id)
    (_ NIL)))
 
-
 (defun handle-new-connection (con)
   (let ((auth-data (get-auth-data (gethash "key" (websocket-driver.ws.server::headers con)))))
     (trivia:match auth-data
@@ -96,12 +93,10 @@
     (cl-json:encode-json-to-string `(("RESULT" . "OK")
                                      ("DATA"   . ,mailbox)))))
 
-
 (defun get-status (id)
   (let* ((client (gethash id *connections*)))
     (cl-json:encode-json-to-string `(("RESULT" . "OK")
                                      ("STATUS" . ,(string (ready-state (connection client))))))))
-
 
 (defun write-to-conn (id data)
   (let* ((client (gethash id *connections*))
@@ -113,7 +108,6 @@
 
 (defun handle-close-connection (connection)
   (setf (connection (find-client-by-conn connection)) NIL))
-
 
 ;;;WS SERVER
 (defun run-ws-server (env)
@@ -168,7 +162,6 @@
                                  (_ 
                                   `(500 (:content-type "application/json") (,(invalid-req-handler)))))))
                 (_ '(200 (:content-type "application/json") ("fuko")))))
-
 
 (defun main ()
   (defvar *ws-handler*   (clack:clackup #'run-ws-server   :port 8086))
