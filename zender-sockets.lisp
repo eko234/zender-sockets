@@ -5,6 +5,8 @@
 ;;;CONNECTION DATABASE
 (defvar *connections* (make-hash-table :test 'equal))
 
+(defun hi ()
+  (format nil "hello ~%"))
 
 ;;;UTILS
 (defun get-auth-data (data)
@@ -142,6 +144,9 @@
       (websocket-driver:start-connection ws))))
 
 
+(defun invalid-req-handler ()
+  (format nil "Invalid request my boi"))
+
 ;;;HTTP SERVER
 (defun run-http-server (env)
   (trivia:match env
@@ -167,28 +172,35 @@
                                   `(200 (:content-type "application/json") (,(with-generic-error-handler
                                                                                  (write-to-conn id data)))))
                                  (_ 
-                                  `(500 (:content-type "application/json") ("invalid request kiddo"))))))
+                                  `(500 (:content-type "application/json") (,(invalid-req-handler)))))))
                 (_ '(200 (:content-type "application/json") ("fuko")))))
 
 
 (defun main ()
   (defvar *ws-handler*   (clack:clackup #'run-ws-server   :port 8086))
   (defvar *http-handler* (clack:clackup #'run-http-server :port 8073))
+  (format T "launching this motherfuker ~%")
+  (force-output)
+  (uiop:format! t "swanking ma nigga")
+  (bt:make-thread (lambda ()
+                    (swank:create-server :port 4006)
+                    :name "swank"))
   ;; let the webserver run.
   ;; warning: hardcoded "hunchentoot".
-  (handler-case (bt:join-thread (find-if (lambda (th)
-                                           (search "hunchentoot" (bt:thread-name th)))
-                                         (bt:all-threads)))
-    ;; Catch a user's C-c
-    (#+sbcl sb-sys:interactive-interrupt
-      #+ccl  ccl:interrupt-signal-condition
-      #+clisp system::simple-interrupt-condition
-      #+ecl ext:interactive-interrupt
-      #+allegro excl:interrupt-signal
-      () (progn
-           (format *error-output* "Aborting.~&")
-           (clack:stop *server*)
-           (uiop:quit)))
-    (error (c) (format t "Woops, an unknown error occured:~&~a~&" c))))
+  ; (handler-case (bt:join-thread (find-if (lambda (th)
+  ;                                          (search "hunchentoot" (bt:thread-name th)))
+  ;                                        (bt:all-threads)))
+  ;   ;; Catch a user's C-c
+  ;   (#+sbcl sb-sys:interactive-interrupt
+  ;     #+ccl  ccl:interrupt-signal-condition
+  ;     #+clisp system::simple-interrupt-condition
+  ;     #+ecl ext:interactive-interrupt
+  ;     #+allegro excl:interrupt-signal
+  ;     () (progn
+  ;          (format *error-output* "Aborting.~&")
+  ;          (clack:stop *server*)
+  ;          (uiop:quit)))
+  ;   (error (c) (format t "Woops, an unknown error occured:~&~a~&" c)))
+  )
 
 

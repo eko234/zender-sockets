@@ -11,6 +11,7 @@
                "websocket-driver"
                "dexador"
                "clack"
+               "swank"
                "cl-json"
                "flexi-streams")
   :components ((:file "package")
