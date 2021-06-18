@@ -5,9 +5,6 @@
 ;;;CONNECTION DATABASE
 (defvar *connections* (make-hash-table :test 'equal))
 
-(defun hi ()
-  (format nil "hello ~%"))
-
 ;;;UTILS
 (defun get-auth-data (data)
   (with-input-from-string
@@ -22,7 +19,7 @@
        ,exp
      (t (c) 
        (format T "~a ~%" c)
-       (cl-json:encode-json-to-string `(("RESULT" . "ERR")
+       (cl-json:encode-json-to-string `(("RESULT" . "ERRata")
                                         ("STATUS" . "FUCKUP"))))))
 
 
@@ -184,23 +181,6 @@
   (uiop:format! t "swanking ma nigga")
   (bt:make-thread (lambda ()
                     (swank:create-server :port 4006)
-                    :name "swank"))
-  ;; let the webserver run.
-  ;; warning: hardcoded "hunchentoot".
-  ; (handler-case (bt:join-thread (find-if (lambda (th)
-  ;                                          (search "hunchentoot" (bt:thread-name th)))
-  ;                                        (bt:all-threads)))
-  ;   ;; Catch a user's C-c
-  ;   (#+sbcl sb-sys:interactive-interrupt
-  ;     #+ccl  ccl:interrupt-signal-condition
-  ;     #+clisp system::simple-interrupt-condition
-  ;     #+ecl ext:interactive-interrupt
-  ;     #+allegro excl:interrupt-signal
-  ;     () (progn
-  ;          (format *error-output* "Aborting.~&")
-  ;          (clack:stop *server*)
-  ;          (uiop:quit)))
-  ;   (error (c) (format t "Woops, an unknown error occured:~&~a~&" c)))
-  )
+                    :name "swank")))
 
 
