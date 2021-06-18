@@ -19,15 +19,13 @@
        ,exp
      (t (c) 
        (format T "~a ~%" c)
-       (cl-json:encode-json-to-string `(("RESULT" . "ERRata")
+       (cl-json:encode-json-to-string `(("RESULT" . "ERR")
                                         ("STATUS" . "FUCKUP"))))))
-
 
 (defun body-to-string (stream)
   (if (listen stream)
       (alexandria:read-stream-content-into-string stream)
       ""))
-
 
 (defun decode-json-from-string-wrapped (string)
   (ignore-errors
