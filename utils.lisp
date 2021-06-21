@@ -1,5 +1,6 @@
 ;;;UTILS
 (in-package #:utils)
+
 (defun get-auth-data (data)
   (with-input-from-string
       (s (dexador:post "http://localhost:8087/validate"
@@ -35,3 +36,5 @@
   (ignore-errors
     (json:decode-json-from-string string)))
 
+(defun invalid-req-handler ()
+  (format nil "Invalid request my kid"))
