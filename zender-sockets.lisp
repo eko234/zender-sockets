@@ -4,31 +4,6 @@
 ;;;CONNECTION DATABASE
 (defvar *connections* (make-hash-table :test 'equal))
 
-;;;UTILS
-(defun get-auth-data (data)
-  (with-input-from-string
-      (s (dexador:post "http://localhost:8087/validate"
-                       :headers '(("content-type" . "application/json"))
-                       :content (cl-json:encode-json-to-string `(("secret" . ,data)))))
-    (json:decode-json s)))
-
-(defmacro with-generic-error-handler (exp)
-  `(handler-case 
-       ,exp
-     (t (c) 
-       (format T "~a ~%" c)
-       (cl-json:encode-json-to-string `(("RESULT" . "ERR")
-                                        ("STATUS" . "FUCKUP"))))))
-
-(defun body-to-string (stream)
-  (if (listen stream)
-      (alexandria:read-stream-content-into-string stream)
-      ""))
-
-(defun decode-json-from-string-wrapped (string)
-  (ignore-errors
-    (json:decode-json-from-string string)))
-
 ;;;CLIENT
 (defclass client ()
   ((connection :initarg :connection
@@ -109,6 +84,10 @@
 (defun handle-close-connection (connection)
   (setf (connection (find-client-by-conn connection)) NIL))
 
+
+(defun invalid-req-handler ()
+  (format nil "Invalid request my kid"))
+
 ;;;WS SERVER
 (defun run-ws-server (env)
   (let ((ws (websocket-driver:make-server env)))
@@ -132,36 +111,22 @@
       (declare (ignore responder))
       (websocket-driver:start-connection ws))))
 
-(defun invalid-req-handler ()
-  (format nil "Invalid request my kid"))
-
 ;;;HTTP SERVER
 (defun run-http-server (env)
-  (trivia:match env
-                ((plist :request-method request-method
-                        :raw-body       raw-body)
-                 (let ((data (decode-json-from-string-wrapped (body-to-string raw-body))))
-                   (trivia:match data
-                                 ((alist (:cmd . "STATUS")
-                                         (:id . id))
-                                  `(200 (:content-type "application/json") (,(with-generic-error-handler 
-                                                                                 (get-status id)))))
-                                 ((alist (:cmd . "READ")
-                                         (:id . id))
-                                  `(200 (:content-type "application/json") (,(with-generic-error-handler 
-                                                                                 (read-one-from-conn id T)))))
-                                 ((alist (:cmd . "READ-ALL")
-                                         (:id . id))
-                                  `(200 (:content-type "application/json") (,(with-generic-error-handler 
-                                                                                 (read-all-from-conn id T)))))
-                                 ((alist (:cmd . "WRITE")
-                                         (:id . id)
-                                         (:data . data))
-                                  `(200 (:content-type "application/json") (,(with-generic-error-handler
-                                                                                 (write-to-conn id data)))))
-                                 (_ 
-                                  `(500 (:content-type "application/json") (,(invalid-req-handler)))))))
-                (_ '(200 (:content-type "application/json") ("fuko")))))
+  (match-with-request env
+   (((:cmd . "STATUS")
+     (:id  . id))
+    (with-generic-error-handler (get-status id)))
+   (((:cmd . "READ")
+     (:id . id))
+    (with-generic-error-handler (read-one-from-conn id T)))
+   (((:cmd . "READ-ALL")
+     (:id . id))
+    (with-generic-error-handler (read-all-from-conn id T)))
+   (((:cmd . "WRITE")
+     (:id . id)
+     (:data . data))
+    (with-generic-error-handler (write-to-conn id data)))))
 
 (defun main ()
   (defvar *ws-handler*   (clack:clackup #'run-ws-server   :port 8086))
