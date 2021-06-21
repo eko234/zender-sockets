@@ -1,5 +1,5 @@
-
 ;;;UTILS
+(in-package #:utils)
 (defun get-auth-data (data)
   (with-input-from-string
       (s (dexador:post "http://localhost:8087/validate"
