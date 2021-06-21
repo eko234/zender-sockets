@@ -85,8 +85,7 @@
   (setf (connection (find-client-by-conn connection)) NIL))
 
 
-(defun invalid-req-handler ()
-  (format nil "Invalid request my kid"))
+
 
 ;;;WS SERVER
 (defun run-ws-server (env)
